@@ -1,11 +1,12 @@
 async function fetchBTCData() {
-  const response = await fetch('https://api.coindesk.com/v1/bpi/historical/close.json?start=2012-01-01&end=2023-12-31');
+  const response = await fetch('https://api.coindesk.com/v1/bpi/historical/close.json?start=2012-01-01&end=2024-12-31');
   const data = await response.json();
   return data.bpi;
 }
 
 function calculateMonthlyGains(data) {
   const monthlyGains = {};
+  let previousPrice = null;
 
   for (const date in data) {
     const [year, month] = date.split('-');
@@ -17,14 +18,15 @@ function calculateMonthlyGains(data) {
       };
     }
 
-    if (monthlyGains[year][month]) {
-      const prevPrice = monthlyGains[year][month].lastPrice;
-      const currPrice = data[date];
-      const gain = ((currPrice - prevPrice) / prevPrice) * 100;
-      monthlyGains[year][month].gain = gain;
+    const currPrice = data[date];
+    if (previousPrice !== null) {
+      const gain = ((currPrice - previousPrice) / previousPrice) * 100;
+      monthlyGains[year][month] = gain;
     } else {
-      monthlyGains[year][month] = { lastPrice: data[date], gain: null };
+      monthlyGains[year][month] = null;
     }
+
+    previousPrice = currPrice;
   }
 
   return monthlyGains;
@@ -42,10 +44,10 @@ function populateTable(monthlyGains) {
 
     for (const month in monthlyGains[year]) {
       const cellGain = document.createElement('td');
-      const gain = monthlyGains[year][month]?.gain;
+      const gain = monthlyGains[year][month];
       
-      if (gain !== null) {
-          cellGain.textContent = Number.parseFloat(gain).toFixed(2) + '%';
+      if (gain !== null && !isNaN(gain)) {
+        cellGain.textContent = gain.toFixed(2) + '%';
         cellGain.className = gain > 0 ? 'gain-positive' : 'gain-negative';
       } else {
         cellGain.textContent = '-';
